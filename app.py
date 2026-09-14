@@ -18,7 +18,7 @@ from streamlit.components.v1 import html
 
 
 # Paste your OpenRouter API key between the quotation marks.
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "ADD YOUR API KEY"
 OPENROUTER_MODEL = "nvidia/nemotron-3.5-lightning:free"
 OPENROUTER_VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 DATA_FILE = Path(__file__).with_name("smartassist_data.json")
