@@ -2,6 +2,7 @@ import json
 import base64
 from io import BytesIO
 import mimetypes
+import os
 import re
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -17,14 +18,17 @@ import streamlit as st
 from streamlit.components.v1 import html
 
 
-# Paste your OpenRouter API key between the quotation marks.
-OPENROUTER_API_KEY = "ADD YOUR API KEY"
+# Set OPENROUTER_API_KEY in your environment, or paste a valid key here locally.
+OPENROUTER_API_KEY = os.getenv(
+    "OPENROUTER_API_KEY",
+    "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",
+)
 OPENROUTER_MODEL = "nvidia/nemotron-3.5-lightning:free"
 OPENROUTER_VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 DATA_FILE = Path(__file__).with_name("smartassist_data.json")
 
 
-st.set_page_config(page_title="SmartAssist", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="SmartAssist", page_icon="", layout="wide")
 
 
 def load_data():
@@ -67,7 +71,7 @@ if "chats" not in st.session_state:
 def ask_openrouter(messages, model=OPENROUTER_MODEL):
     """Send normalized messages to OpenRouter and return a clean reply."""
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "paste-your-openrouter-api-key-here":
-        return "Please add your OpenRouter API key to OPENROUTER_API_KEY in app.py to use SmartAssist."
+        return "Please set a valid OPENROUTER_API_KEY before using SmartAssist."
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -109,6 +113,12 @@ def ask_openrouter(messages, model=OPENROUTER_MODEL):
                 )
         except requests.exceptions.RequestException as error:
             st.session_state.last_reasoning_details = None
+            if getattr(error.response, "status_code", None) == 401:
+                return (
+                    "OpenRouter rejected the API key (401 Unauthorized). "
+                    "Create a new key at https://openrouter.ai/keys, then set "
+                    "OPENROUTER_API_KEY and restart SmartAssist."
+                )
             return f"I could not contact OpenRouter: {error}"
         except (KeyError, TypeError, ValueError) as error:
             st.session_state.last_reasoning_details = None
@@ -312,7 +322,8 @@ def update_reminder_from_message(message):
     """Update a matching task's reminder time from a chat command."""
     match = re.search(
         r"(?:update|change|edit|move|make)\s+(?:the\s+)?"
-        r"(?:reminder\s+for\s+)?(.+?)\s+(?:to|at)\s+"
+        r"(?:(?:reminder\s+(?:for|of))|(?:reminder\s+time\s+(?:for|of)))\s+"
+        r"(.+?)\s+(?:to|at)\s+"
         r"(1[0-2]|[1-9])\s*(?::([0-5]\d))?\s*(am|pm)\b",
         message,
         flags=re.IGNORECASE,
